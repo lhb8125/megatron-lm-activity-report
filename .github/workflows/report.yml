@@ -1,0 +1,92 @@
+name: Publish Megatron-LM activity report
+
+on:
+  schedule:
+    - cron: "0 1 * * 1"
+    - cron: "0 1 1 * *"
+  workflow_dispatch:
+    inputs:
+      cutoff:
+        description: Inclusive cutoff date (YYYY-MM-DD)
+        required: true
+        type: string
+      final:
+        description: Mark this as the final report for the month
+        required: true
+        default: false
+        type: boolean
+      dry_run:
+        description: Generate artifacts without committing reports or updating the Issue
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: megatron-activity-report-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: github.event_name == 'workflow_dispatch' || vars.REPORT_AUTOMATION_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5' }}
+      MEGATRON_GH_TOKEN: ${{ secrets.MEGATRON_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Restore rebuildable DuckDB ledger
+        uses: actions/cache@v4
+        with:
+          path: runtime/activity.duckdb
+          key: ${{ runner.os }}-activity-db-v1-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-activity-db-v1-
+
+      - name: Install
+        run: python -m pip install .
+
+      - name: Configure report commits
+        run: |
+          git config user.name "megatron-activity-report[bot]"
+          git config user.email "megatron-activity-report[bot]@users.noreply.github.com"
+
+      - name: Run scheduled publication
+        if: github.event_name == 'schedule'
+        run: megatron-activity-report scheduled --publish
+
+      - name: Run manual report
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REPORT_CUTOFF: ${{ inputs.cutoff }}
+          REPORT_FINAL: ${{ inputs.final }}
+          REPORT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=(run --cutoff "${REPORT_CUTOFF}")
+          if [[ "${REPORT_FINAL}" == "true" ]]; then args+=(--final); fi
+          if [[ "${REPORT_DRY_RUN}" == "true" ]]; then
+            args+=(--dry-run)
+          else
+            args+=(--publish)
+          fi
+          megatron-activity-report "${args[@]}"
+
+      - name: Upload audit database and previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activity-report-${{ github.run_id }}
+          path: runtime/
+          if-no-files-found: ignore
+          retention-days: 90

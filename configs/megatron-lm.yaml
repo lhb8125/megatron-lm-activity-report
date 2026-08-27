@@ -1,0 +1,31 @@
+source_repo: NVIDIA/Megatron-LM
+destination_repo: NVIDIA/Megatron-LM
+report_repo: lhb8125/megatron-lm-activity-report
+report_branch: main
+timezone: Asia/Shanghai
+
+database_path: runtime/activity.duckdb
+artifacts_dir: runtime/runs
+state_path: state/issues.json
+reports_dir: reports
+
+github_workers: 8
+request_timeout_seconds: 60
+max_themes_per_section: 10
+
+summarizer:
+  provider: openai
+  model: gpt-5
+  reasoning_effort: medium
+  batch_size: 60
+  max_output_tokens: 24000
+
+filters:
+  test_prefixes:
+    - tests/
+    - test/
+  ci_prefixes:
+    - .github/
+    - ci/
+    - tools/ci/
+    - tests/test_utils/python_scripts/
