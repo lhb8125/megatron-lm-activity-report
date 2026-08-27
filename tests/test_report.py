@@ -40,12 +40,12 @@ def test_report_has_stable_chinese_link_and_identical_prs(tmp_path):
     ]
     english = {
         "overview": "THD support landed.",
-        "delivered_themes": [{"theme_id": "d-1", "title": "THD", "summary": "Added THD.", "highlights": [], "group_ids": ["pr-10"]}],
+        "delivered_themes": [{"theme_id": "d-1", "title": "THD", "summary": "Added THD.", "highlights": [{"text": "Added the packed path.", "group_ids": ["pr-10"]}], "group_ids": ["pr-10"]}],
         "ongoing_themes": [],
     }
     chinese = {
         "overview": "THD 支持已经落地。",
-        "delivered_themes": [{"theme_id": "d-1", "title": "THD", "summary": "新增 THD。", "highlights": [], "group_ids": ["pr-10"]}],
+        "delivered_themes": [{"theme_id": "d-1", "title": "THD", "summary": "新增 THD。", "highlights": [{"text": "新增打包路径。", "group_ids": ["pr-10"]}], "group_ids": ["pr-10"]}],
         "ongoing_themes": [],
     }
     _, _, en_body, zh_body = render_reports(
@@ -54,4 +54,7 @@ def test_report_has_stable_chinese_link_and_identical_prs(tmp_path):
     )
     assert "reports/zh-CN/2026/08.md" in en_body
     assert en_body.count("/pull/10") == zh_body.count("/pull/10") == 1
+    assert "Added the packed path. ([#10]" in en_body
+    assert "新增打包路径。（[#10]" in zh_body
+    assert "Related PRs:" not in en_body
     assert "implementation details" not in en_body

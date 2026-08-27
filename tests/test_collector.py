@@ -31,6 +31,13 @@ def test_old_open_pr_with_commit_is_active_but_comment_only_is_not():
     assert _window_row(pull, [], [], window) is None
 
 
+def test_previous_month_activity_does_not_carry_into_current_report():
+    window = ReportWindow.for_cutoff("2026-08-23", timezone_name="UTC")
+    pull = {"number": 10, "created_at": "2026-06-02T00:00:00Z", "merged_at": None}
+    old_commit = {"committed_at": "2026-07-31T23:59:59Z", "sha": "old"}
+    assert _window_row(pull, [], [old_commit], window) is None
+
+
 def test_future_merge_does_not_change_historical_cutoff_state():
     window = ReportWindow.for_cutoff("2026-07-12", timezone_name="UTC")
     pull = {

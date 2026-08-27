@@ -19,6 +19,54 @@ DEFAULT_CI_PREFIXES = (
     "tools/ci/",
     "tests/test_utils/python_scripts/",
 )
+DEFAULT_PRESERVE_TERMS = (
+    "Megatron-LM",
+    "Megatron Core",
+    "Megatron-FSDP",
+    "FSDP",
+    "MFSDP",
+    "CUDA Graph",
+    "THD",
+    "GTP",
+    "MTP",
+    "MoE",
+    "RL",
+    "GRPO",
+    "MIMO",
+    "DeepSeek-V4",
+    "Qwen3.5-VL",
+    "Gated Delta Product",
+    "Gated DeltaNet",
+    "HybridModel",
+    "Muon",
+    "NIXL",
+    "NCCL",
+    "SSM",
+    "KV cache",
+    "RoPE",
+    "MRoPE",
+    "MLA",
+    "CSA",
+    "DSA",
+    "DTensor",
+    "ZeRO",
+    "MXFP8",
+    "FP8",
+    "BF16",
+    "FP32",
+    "cuDNN",
+    "cuBLASLt",
+    "TileLang",
+    "Triton",
+    "CuTe DSL",
+    "PyTorch",
+    "OpenAI",
+    "vLLM",
+    "Transformer Engine",
+    "Energon",
+    "Top-K",
+    "LayerWise",
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -43,6 +91,7 @@ class ReportConfig:
     codex_binary: str = "codex"
     test_prefixes: tuple[str, ...] = DEFAULT_TEST_PREFIXES
     ci_prefixes: tuple[str, ...] = DEFAULT_CI_PREFIXES
+    translation_preserve_terms: tuple[str, ...] = DEFAULT_PRESERVE_TERMS
     project_root: Path = dataclasses.field(default=Path.cwd(), compare=False)
     config_path: Path | None = dataclasses.field(default=None, compare=False)
 
@@ -58,6 +107,7 @@ class ReportConfig:
 
         filters = _mapping(payload.get("filters"), "filters")
         summarizer = _mapping(payload.get("summarizer"), "summarizer")
+        translation = _mapping(payload.get("translation"), "translation")
 
         def root_path(key: str, default: str) -> Path:
             value = Path(str(payload.get(key, default))).expanduser()
@@ -88,6 +138,9 @@ class ReportConfig:
             codex_binary=str(summarizer.get("codex_binary", "codex")),
             test_prefixes=tuple(filters.get("test_prefixes", DEFAULT_TEST_PREFIXES)),
             ci_prefixes=tuple(filters.get("ci_prefixes", DEFAULT_CI_PREFIXES)),
+            translation_preserve_terms=tuple(
+                translation.get("preserve_terms", DEFAULT_PRESERVE_TERMS)
+            ),
             project_root=root,
             config_path=config_path,
         )
@@ -108,6 +161,12 @@ class ReportConfig:
             raise ValueError("summarizer.batch_size must be between 1 and 100")
         if not 1 <= self.max_themes_per_section <= 20:
             raise ValueError("max_themes_per_section must be between 1 and 20")
+        if any(not str(term).strip() for term in self.translation_preserve_terms):
+            raise ValueError("translation.preserve_terms cannot contain empty values")
+        if len(set(self.translation_preserve_terms)) != len(
+            self.translation_preserve_terms
+        ):
+            raise ValueError("translation.preserve_terms cannot contain duplicates")
 
     def fingerprint(self) -> str:
         payload = dataclasses.asdict(self)

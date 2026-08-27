@@ -36,7 +36,19 @@ and aggregate count but are not narrated.
 The model first extracts bounded English facts for each high-confidence change
 group, then selects concrete Delivered and In Progress themes. Chinese is a
 translation of that validated structure. Validation requires identical theme
-order, theme IDs, highlight counts, and PR citations in both languages.
+order, theme IDs, highlight counts, and PR citations in both languages. Each
+subproject bullet carries only its directly supporting PR links; there is no
+theme-level citation dump.
+
+Chinese keeps established English model names, acronyms, APIs, kernel names, and
+technical identifiers. The configurable glossary is defined under
+`translation.preserve_terms` in [`configs/megatron-lm.yaml`](configs/megatron-lm.yaml),
+and code-like terms are also detected from each English report automatically.
+
+Only activity inside the current month-to-date window is eligible. An open PR is
+not carried forward merely because it appeared in the previous report or remains
+open. Fact extraction receives only commit subjects from the current window, so
+old implementation history is not retold as new work.
 
 Reports are stored at stable paths:
 

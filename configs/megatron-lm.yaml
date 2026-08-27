@@ -20,6 +20,55 @@ summarizer:
   batch_size: 60
   max_output_tokens: 24000
 
+translation:
+  preserve_terms:
+    - Megatron-LM
+    - Megatron Core
+    - Megatron-FSDP
+    - FSDP
+    - MFSDP
+    - CUDA Graph
+    - THD
+    - GTP
+    - MTP
+    - MoE
+    - RL
+    - GRPO
+    - MIMO
+    - DeepSeek-V4
+    - Qwen3.5-VL
+    - Gated Delta Product
+    - Gated DeltaNet
+    - HybridModel
+    - Muon
+    - NIXL
+    - NCCL
+    - SSM
+    - KV cache
+    - RoPE
+    - MRoPE
+    - MLA
+    - CSA
+    - DSA
+    - DTensor
+    - ZeRO
+    - MXFP8
+    - FP8
+    - BF16
+    - FP32
+    - cuDNN
+    - cuBLASLt
+    - TileLang
+    - Triton
+    - CuTe DSL
+    - PyTorch
+    - OpenAI
+    - vLLM
+    - Transformer Engine
+    - Energon
+    - Top-K
+    - LayerWise
+
 filters:
   test_prefixes:
     - tests/

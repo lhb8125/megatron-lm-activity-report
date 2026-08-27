@@ -18,6 +18,7 @@ from .publisher import ReportPublisher
 from .report import render_reports
 from .storage import ActivityStore
 from .window import ReportWindow
+from .window import parse_github_time
 
 
 class ReportPipeline:
@@ -59,13 +60,7 @@ class ReportPipeline:
                     record
                     for record in records
                     if not classifications[int(record["number"])]["excluded"]
-                    and (
-                        record["merged"]
-                        or (
-                            record["state_at_cutoff"] == "open"
-                            and (record["opened"] or record["committed"])
-                        )
-                    )
+                    and _eligible_for_narrative(record, window)
                 ]
                 groups = build_change_groups(eligible)
                 store.replace_groups(self.config.source_repo, window.key, groups)
@@ -81,7 +76,8 @@ class ReportPipeline:
                         self.config,
                         make_runner(self.config, run_dir),
                         store,
-                    ).summarize(eligible, groups)
+                        progress=self.progress,
+                    ).summarize(eligible, groups, window)
                 else:
                     english = {
                         "overview": "No report-eligible feature, optimization, or reliability theme was active in this window.",
@@ -190,3 +186,21 @@ class ReportPipeline:
                 yield
             finally:
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _eligible_for_narrative(
+    record: dict[str, Any], window: ReportWindow
+) -> bool:
+    """Reject carry-over PRs that have no activity in the current month."""
+
+    if bool(record.get("merged")):
+        return True
+    if record.get("state_at_cutoff") != "open":
+        return False
+    if bool(record.get("opened") or record.get("committed")):
+        return True
+    return any(
+        event.get("event") == "reopened"
+        and window.contains(parse_github_time(event.get("created_at")))
+        for event in record.get("events", [])
+    )

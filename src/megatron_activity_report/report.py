@@ -76,8 +76,9 @@ def render_reports(
         group_numbers,
         by_number,
         empty_text="No major delivered theme was selected for this window.",
-        related_label="Related PRs: ",
         separator=", ",
+        citation_open=" (",
+        citation_close=")",
     )
     _render_section(
         english_lines,
@@ -86,8 +87,9 @@ def render_reports(
         group_numbers,
         by_number,
         empty_text="No major ongoing theme was selected for this window.",
-        related_label="Related PRs: ",
         separator=", ",
+        citation_open=" (",
+        citation_close=")",
     )
     english_lines.extend(
         [
@@ -97,7 +99,8 @@ def render_reports(
             "Related `dev` and `main` PRs are described once. The rebuildable raw "
             "ledger, exclusion evidence, commit activity, and state events are retained "
             "in the workflow database artifact. PRs closed without merge are counted "
-            "but not narrated.",
+            "but not narrated. Open PRs do not carry into a new month without code or "
+            "state activity in that month.",
             "",
         ]
     )
@@ -131,8 +134,9 @@ def render_reports(
         group_numbers,
         by_number,
         empty_text="本周期没有进入重点报告的已交付主题。",
-        related_label="相关 PR：",
         separator="、",
+        citation_open="（",
+        citation_close="）",
     )
     _render_section(
         chinese_lines,
@@ -141,8 +145,9 @@ def render_reports(
         group_numbers,
         by_number,
         empty_text="本周期没有进入重点报告的进行中主题。",
-        related_label="相关 PR：",
         separator="、",
+        citation_open="（",
+        citation_close="）",
     )
     chinese_lines.extend(
         [
@@ -150,7 +155,8 @@ def render_reports(
             "",
             "正文按技术主题组织，而不是按 PR 时间顺序罗列。同一变更的 `dev` / "
             "`main` PR 只描述一次；可重建的完整流水账、过滤证据、提交活动和状态事件"
-            "保存在工作流数据库 artifact 中。关闭未合并的 PR 只计入统计。",
+            "保存在工作流数据库 artifact 中。关闭未合并的 PR 只计入统计；open PR "
+            "如果本月没有 code 或 state activity，不会沿用到新月报告。",
             "",
         ]
     )
@@ -204,8 +210,9 @@ def _render_section(
     by_number: dict[int, dict[str, Any]],
     *,
     empty_text: str,
-    related_label: str,
     separator: str,
+    citation_open: str,
+    citation_close: str,
 ) -> None:
     lines.extend([heading, ""])
     if not themes:
@@ -214,19 +221,23 @@ def _render_section(
     for theme in themes:
         lines.extend([f"### {str(theme['title']).strip()}", "", str(theme["summary"]).strip(), ""])
         for highlight in theme.get("highlights") or []:
-            lines.append(f"- {str(highlight).strip()}")
+            numbers = sorted(
+                {
+                    int(number)
+                    for group_id in highlight["group_ids"]
+                    for number in group_numbers[group_id]
+                }
+            )
+            links = [
+                f"[#{number}]({by_number[number]['url']})"
+                for number in numbers
+                if number in by_number
+            ]
+            if not links:
+                raise ValueError("report subproject has no PR citations")
+            lines.append(
+                f"- {str(highlight['text']).strip()}"
+                f"{citation_open}{separator.join(links)}{citation_close}"
+            )
         if theme.get("highlights"):
             lines.append("")
-        numbers = sorted(
-            {
-                int(number)
-                for group_id in theme["group_ids"]
-                for number in group_numbers[group_id]
-            }
-        )
-        links = [
-            f"[#{number}]({by_number[number]['url']})"
-            for number in numbers
-            if number in by_number
-        ]
-        lines.extend([related_label + separator.join(links), ""])
