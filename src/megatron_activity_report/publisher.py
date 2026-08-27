@@ -107,18 +107,19 @@ def publish_issue(
     if not repository.get("has_issues"):
         raise GitHubError(f"Issues are disabled on {config.destination_repo}")
     marker = report_marker(config.source_repo, month_key)
+    accepted_markers = (marker, _legacy_report_marker(config.source_repo, month_key))
     issue = None
     if known_issue_number is not None:
         try:
             candidate = client.get(
                 f"/repos/{config.destination_repo}/issues/{known_issue_number}"
             )
-            if "pull_request" not in candidate and marker in str(candidate.get("body") or ""):
+            if "pull_request" not in candidate and _has_marker(candidate, accepted_markers):
                 issue = candidate
         except GitHubError:
             issue = None
     if issue is None:
-        issue = _find_existing(client, config, marker)
+        issue = _find_existing(client, config, accepted_markers)
     if issue is None:
         progress(f"creating Issue in {config.destination_repo}: {title}")
         return client.post(
@@ -132,7 +133,7 @@ def publish_issue(
 
 
 def _find_existing(
-    client: GitHubClient, config: ReportConfig, marker: str
+    client: GitHubClient, config: ReportConfig, markers: tuple[str, ...]
 ) -> dict[str, Any] | None:
     recent = client.paginate(
         f"/repos/{config.destination_repo}/issues",
@@ -140,7 +141,7 @@ def _find_existing(
         max_pages=2,
     )
     for issue in recent:
-        if "pull_request" not in issue and marker in str(issue.get("body") or ""):
+        if "pull_request" not in issue and _has_marker(issue, markers):
             return issue
     response = client.get(
         "/search/issues",
@@ -150,9 +151,18 @@ def _find_existing(
         },
     )
     for issue in response.get("items") or []:
-        if marker in str(issue.get("body") or ""):
+        if _has_marker(issue, markers):
             return issue
     return None
+
+
+def _has_marker(issue: dict[str, Any], markers: tuple[str, ...]) -> bool:
+    body = str(issue.get("body") or "")
+    return any(marker in body for marker in markers)
+
+
+def _legacy_report_marker(source_repo: str, month_key: str) -> str:
+    return f"<!-- pr-activity-report source={source_repo} period={month_key} -->"
 
 
 def report_paths(config: ReportConfig, window: ReportWindow) -> tuple[Path, Path]:

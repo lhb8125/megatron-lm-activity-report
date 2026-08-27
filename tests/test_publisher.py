@@ -59,6 +59,21 @@ def test_title_change_still_updates_same_marked_issue(tmp_path):
     assert client.updated[0]["title"] == "new cutoff"
 
 
+def test_legacy_month_marker_updates_existing_issue_during_migration(tmp_path):
+    legacy = "<!-- pr-activity-report source=NVIDIA/Megatron-LM period=2026-07 -->"
+    client = FakeGitHub([{"number": 6607, "title": "old", "body": legacy}])
+    issue = publish_issue(
+        client,
+        config(tmp_path),
+        month_key="2026-07",
+        title="final",
+        body=report_marker("NVIDIA/Megatron-LM", "2026-07"),
+        progress=lambda _message: None,
+    )
+    assert issue["number"] == 6607
+    assert not client.created
+
+
 def test_wrong_known_issue_marker_is_not_modified(tmp_path):
     marker = report_marker("NVIDIA/Megatron-LM", "2026-08")
     client = FakeGitHub([{"number": 9, "title": "unrelated", "body": "other"}])
