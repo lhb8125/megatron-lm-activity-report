@@ -127,4 +127,6 @@ citations.
 
 The runtime DuckDB file and generated previews are ignored by Git. Actions
 retains them as a 90-day audit artifact and restores the latest compatible cache;
-if the cache is unavailable, the public GitHub data is collected again.
+if the cache is unavailable, the public GitHub data is collected again. A manual
+workflow run can optionally supply `seed_run_id` to restore the DuckDB ledger
+from that prior run's `activity-report-<run-id>` artifact.

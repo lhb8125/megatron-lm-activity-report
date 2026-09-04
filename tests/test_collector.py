@@ -1,4 +1,12 @@
-from megatron_activity_report.collector import _window_row
+import pytest
+
+from megatron_activity_report.collector import (
+    ActivityCollector,
+    CollectedPullRequest,
+    _window_row,
+)
+from megatron_activity_report.github import GitHubError
+from megatron_activity_report.storage import ActivityStore
 from megatron_activity_report.window import ReportWindow
 
 
@@ -49,3 +57,38 @@ def test_future_merge_does_not_change_historical_cutoff_state():
     assert row is not None
     assert row["state_at_cutoff"] == "open"
     assert not row["merged"]
+
+
+def test_completed_snapshots_are_durable_when_a_later_fetch_fails(tmp_path, monkeypatch):
+    updated_at = "2026-08-04T00:00:00Z"
+    item = CollectedPullRequest(
+        pull={
+            "number": 1,
+            "title": "THD",
+            "body": "",
+            "html_url": "https://github.com/NVIDIA/Megatron-LM/pull/1",
+            "state": "open",
+            "created_at": updated_at,
+            "updated_at": updated_at,
+        },
+        files=[],
+        events=[],
+        commits=[],
+    )
+
+    def fetch_then_fail(_numbers):
+        yield item
+        raise GitHubError("rate limited")
+
+    with ActivityStore(tmp_path / "activity.duckdb") as store:
+        collector = ActivityCollector(
+            object(), store, source_repo="NVIDIA/Megatron-LM", workers=1
+        )
+        monkeypatch.setattr(
+            collector, "_discover_candidates", lambda _window: {1: updated_at, 2: updated_at}
+        )
+        monkeypatch.setattr(collector, "_fetch_all", fetch_then_fail)
+        with pytest.raises(GitHubError, match="rate limited"):
+            collector.collect(ReportWindow.for_cutoff("2026-08-23", timezone_name="UTC"))
+        assert store.cached_updated_at("NVIDIA/Megatron-LM", 1) == updated_at
+        assert store.cached_updated_at("NVIDIA/Megatron-LM", 2) is None

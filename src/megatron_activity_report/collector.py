@@ -5,7 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import dataclasses
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from .github import GitHubClient, GitHubError
 from .storage import ActivityStore
@@ -119,20 +119,17 @@ class ActivityCollector:
             int(item["number"]): str(item.get("updated_at") or "") for item in items
         }
 
-    def _fetch_all(self, numbers: set[int]) -> list[CollectedPullRequest]:
-        result: list[CollectedPullRequest] = []
+    def _fetch_all(self, numbers: set[int]) -> Iterator[CollectedPullRequest]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
             futures = {executor.submit(self._fetch_one, number): number for number in numbers}
             for future in concurrent.futures.as_completed(futures):
                 number = futures[future]
                 try:
-                    result.append(future.result())
+                    yield future.result()
                 except Exception as exc:
                     for pending in futures:
                         pending.cancel()
                     raise GitHubError(f"failed to fetch PR #{number}: {exc}") from exc
-        result.sort(key=lambda item: int(item.pull["number"]))
-        return result
 
     def _fetch_one(self, number: int) -> CollectedPullRequest:
         base = f"/repos/{self.source_repo}"

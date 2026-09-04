@@ -20,8 +20,14 @@ on:
         required: true
         default: true
         type: boolean
+      seed_run_id:
+        description: Optional prior run ID whose audit artifact seeds the DuckDB ledger
+        required: false
+        default: ""
+        type: string
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -54,6 +60,16 @@ jobs:
           key: ${{ runner.os }}-activity-db-v1-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-activity-db-v1-
+
+      - name: Seed DuckDB ledger from a prior audit artifact
+        if: github.event_name == 'workflow_dispatch' && inputs.seed_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: activity-report-${{ inputs.seed_run_id }}
+          path: runtime
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.seed_run_id }}
 
       - name: Install
         run: python -m pip install .

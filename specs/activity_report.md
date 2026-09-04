@@ -35,6 +35,9 @@ cannot silently reuse facts generated from an older activity window.
 The rebuildable DuckDB ledger is saved to the Actions cache even when a later
 generation or validation step fails, so a retry does not need to fetch every PR
 snapshot again.
+Completed concurrent fetches are written as they arrive, making partial progress
+durable if a later request reaches GitHub's rate limit. A manual recovery run may
+also seed the ledger from a prior run's audit artifact by supplying its run ID.
 
 ## Theme and citation structure
 
