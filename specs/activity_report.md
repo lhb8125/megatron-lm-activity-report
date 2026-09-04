@@ -69,6 +69,13 @@ semantically matching highlight and revises that highlight's text. The complete
 section is then validated again. No translation or publication occurs unless
 both sections pass.
 
+JSON Schema cannot express uniqueness across nested themes. Before missing-group
+repair, the application therefore keeps a selected group only in its first
+model-chosen highlight, removes later duplicate citations, and rebuilds the
+redundant theme-level group lists. This normalization never introduces or moves
+a group; unknown IDs, wrong-section IDs, omissions, and all other structural
+violations still fail validation.
+
 ## Bilingual terminology
 
 English is the structural source of truth. Chinese is a translation of the

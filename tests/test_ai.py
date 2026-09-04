@@ -5,6 +5,7 @@ import pytest
 from megatron_activity_report.ai import (
     SummaryError,
     ThemeSummarizer,
+    _deduplicate_section_groups,
     _fact_cache_hash,
     _fact_schema,
     _minimum_theme_count,
@@ -294,3 +295,37 @@ def test_section_validation_repairs_only_missing_facts(tmp_path):
         "pr-2"
     ]
     assert english["delivered_themes"][0]["group_ids"] == ["pr-1", "pr-2"]
+
+
+def test_section_selection_keeps_first_subproject_for_duplicate_group():
+    result = {
+        "overview": "Overview.",
+        "themes": [
+            {
+                "title": "First",
+                "summary": "First summary.",
+                "highlights": [
+                    {"text": "First use.", "group_ids": ["pr-1", "pr-2"]}
+                ],
+                "group_ids": ["pr-1", "pr-2"],
+            },
+            {
+                "title": "Second",
+                "summary": "Second summary.",
+                "highlights": [
+                    {"text": "Duplicate.", "group_ids": ["pr-1"]},
+                    {"text": "Unique.", "group_ids": ["pr-3"]},
+                ],
+                "group_ids": ["pr-1", "pr-3"],
+            },
+        ],
+    }
+
+    normalized = _deduplicate_section_groups(result)
+
+    assert normalized["themes"][0]["group_ids"] == ["pr-1", "pr-2"]
+    assert normalized["themes"][1]["group_ids"] == ["pr-3"]
+    assert normalized["themes"][1]["highlights"] == [
+        {"text": "Unique.", "group_ids": ["pr-3"]}
+    ]
+    assert result["themes"][1]["group_ids"] == ["pr-1", "pr-3"]

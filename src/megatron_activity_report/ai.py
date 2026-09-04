@@ -434,6 +434,7 @@ class ThemeSummarizer:
                     "facts": section_facts,
                 },
             )
+            candidate = _deduplicate_section_groups(candidate)
             for repair_attempt in range(3):
                 try:
                     _validate_section_result(
@@ -818,6 +819,44 @@ def _missing_mandatory_groups(
         for group_id in theme.get("group_ids") or []
     }
     return sorted(required - selected)
+
+
+def _deduplicate_section_groups(result: dict[str, Any]) -> dict[str, Any]:
+    """Keep each selected group in its first model-chosen subproject only.
+
+    JSON Schema can enforce uniqueness within one array, but not across every
+    nested highlight and theme.  Highlights are the semantic source of the
+    selection, so rebuild each redundant theme-level group list from them while
+    retaining the model's original order.  Unknown IDs deliberately remain and
+    are rejected by the normal validator.
+    """
+
+    normalized = copy.deepcopy(result)
+    seen: set[str] = set()
+    themes: list[dict[str, Any]] = []
+    for theme in normalized.get("themes") or []:
+        highlights: list[dict[str, Any]] = []
+        for highlight in theme.get("highlights") or []:
+            group_ids: list[str] = []
+            for group_id in highlight.get("group_ids") or []:
+                group_id = str(group_id)
+                if group_id in seen:
+                    continue
+                seen.add(group_id)
+                group_ids.append(group_id)
+            if group_ids:
+                highlight["group_ids"] = group_ids
+                highlights.append(highlight)
+        if highlights:
+            theme["highlights"] = highlights
+            theme["group_ids"] = [
+                group_id
+                for highlight in highlights
+                for group_id in highlight["group_ids"]
+            ]
+            themes.append(theme)
+    normalized["themes"] = themes
+    return normalized
 
 
 def _theme_skeleton(result: dict[str, Any]) -> list[dict[str, Any]]:
