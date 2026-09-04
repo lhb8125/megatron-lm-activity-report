@@ -33,6 +33,10 @@ report and its substantive statistics. A PR that changes implementation code
 alongside tests or CI remains eligible. Closed-unmerged PRs remain in the ledger
 and aggregate count but are not narrated.
 
+Every PR citation shows its actual target branch, such as `[dev #6022]` or
+`[main #6870]`. Related `dev`/`main` counterparts still share one subproject
+description, with both branch-labelled links placed directly after it.
+
 The model first extracts bounded English facts for each high-confidence change
 group, then selects concrete Delivered and In Progress themes. Chinese is a
 translation of that validated structure. Validation requires identical theme

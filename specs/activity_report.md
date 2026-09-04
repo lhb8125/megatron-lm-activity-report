@@ -59,8 +59,10 @@ assigned to another theme.
 
 Markdown citations are derived from those audited highlight group IDs and
 rendered directly after the corresponding bullet. There is no theme-level PR
-dump. English and Chinese highlight text may differ, but highlight group IDs,
-ordering, and resulting PR links must be identical.
+dump. Every citation label contains the PR's actual target `base_ref`, for
+example `[dev #6022]` or `[main #6870]`; nonstandard target branches retain their
+actual names. English and Chinese highlight text may differ, but highlight group
+IDs, ordering, target labels, and resulting PR links must be identical.
 
 Each English section is validated immediately. When an otherwise valid section
 omits a small number of mandatory groups, a bounded repair call receives only

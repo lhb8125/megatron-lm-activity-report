@@ -36,7 +36,18 @@ def test_report_has_stable_chinese_link_and_identical_prs(tmp_path):
             "merged": True,
             "closed_unmerged": False,
             "state_at_cutoff": "merged",
-        }
+            "base_ref": "main",
+        },
+        {
+            "number": 20,
+            "url": "https://github.com/NVIDIA/Megatron-LM/pull/20",
+            "opened": True,
+            "committed": True,
+            "merged": False,
+            "closed_unmerged": False,
+            "state_at_cutoff": "open",
+            "base_ref": "dev",
+        },
     ]
     english = {
         "overview": "THD support landed.",
@@ -49,12 +60,21 @@ def test_report_has_stable_chinese_link_and_identical_prs(tmp_path):
         "ongoing_themes": [],
     }
     _, _, en_body, zh_body = render_reports(
-        config(tmp_path), window, records, {10: {"excluded": False, "category": "include"}},
-        [{"group_id": "pr-10", "numbers": [10]}], english, chinese
+        config(tmp_path), window, records,
+        {
+            10: {"excluded": False, "category": "include"},
+            20: {"excluded": False, "category": "include"},
+        },
+        [{"group_id": "pr-10", "numbers": [10, 20]}], english, chinese
     )
     assert "reports/zh-CN/2026/08.md" in en_body
     assert en_body.count("/pull/10") == zh_body.count("/pull/10") == 1
-    assert "Added the packed path. ([#10]" in en_body
-    assert "新增打包路径。（[#10]" in zh_body
+    assert en_body.count("/pull/20") == zh_body.count("/pull/20") == 1
+    assert "Added the packed path. ([main #10]" in en_body
+    assert ", [dev #20]" in en_body
+    assert "新增打包路径。（[main #10]" in zh_body
+    assert "、[dev #20]" in zh_body
+    assert "Each PR citation identifies its target branch." in en_body
+    assert "每个 PR 引用均标明目标分支" in zh_body
     assert "Related PRs:" not in en_body
     assert "implementation details" not in en_body

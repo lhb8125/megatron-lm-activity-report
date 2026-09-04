@@ -99,8 +99,8 @@ def render_reports(
             "Related `dev` and `main` PRs are described once. The rebuildable raw "
             "ledger, exclusion evidence, commit activity, and state events are retained "
             "in the workflow database artifact. PRs closed without merge are counted "
-            "but not narrated. Open PRs do not carry into a new month without code or "
-            "state activity in that month.",
+            "but not narrated. Each PR citation identifies its target branch. Open PRs "
+            "do not carry into a new month without code or state activity in that month.",
             "",
         ]
     )
@@ -155,8 +155,9 @@ def render_reports(
             "",
             "正文按技术主题组织，而不是按 PR 时间顺序罗列。同一变更的 `dev` / "
             "`main` PR 只描述一次；可重建的完整流水账、过滤证据、提交活动和状态事件"
-            "保存在工作流数据库 artifact 中。关闭未合并的 PR 只计入统计；open PR "
-            "如果本月没有 code 或 state activity，不会沿用到新月报告。",
+            "保存在工作流数据库 artifact 中。关闭未合并的 PR 只计入统计；每个 PR "
+            "引用均标明目标分支；open PR 如果本月没有 code 或 state activity，不会"
+            "沿用到新月报告。",
             "",
         ]
     )
@@ -229,7 +230,7 @@ def _render_section(
                 }
             )
             links = [
-                f"[#{number}]({by_number[number]['url']})"
+                _pr_link(number, by_number[number])
                 for number in numbers
                 if number in by_number
             ]
@@ -241,3 +242,10 @@ def _render_section(
             )
         if theme.get("highlights"):
             lines.append("")
+
+
+def _pr_link(number: int, record: dict[str, Any]) -> str:
+    base_ref = str(record.get("base_ref") or "unknown").strip()
+    base_ref = re.sub(r"[\x00-\x1f\x7f\[\]]", "", base_ref)
+    base_ref = base_ref[:48] or "unknown"
+    return f"[{base_ref} #{number}]({record['url']})"
