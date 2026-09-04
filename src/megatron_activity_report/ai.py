@@ -25,7 +25,7 @@ class SummaryError(RuntimeError):
     """Model invocation or output validation failed."""
 
 
-FACT_CACHE_VERSION = "v2-window-activity"
+FACT_CACHE_VERSION = "v3-trusted-citations"
 
 
 FACT_SCHEMA: dict[str, Any] = {
@@ -37,7 +37,6 @@ FACT_SCHEMA: dict[str, Any] = {
                 "type": "object",
                 "properties": {
                     "group_id": {"type": "string"},
-                    "section": {"type": "string", "enum": ["delivered", "ongoing"]},
                     "theme": {"type": "string"},
                     "kind": {
                         "type": "string",
@@ -49,11 +48,9 @@ FACT_SCHEMA: dict[str, Any] = {
                     "summary": {"type": "string"},
                     "impact": {"type": "string"},
                     "importance": {"type": "integer", "minimum": 1, "maximum": 5},
-                    "pr_numbers": {"type": "array", "items": {"type": "integer"}},
                 },
                 "required": [
-                    "group_id", "section", "theme", "kind", "summary", "impact",
-                    "importance", "pr_numbers",
+                    "group_id", "theme", "kind", "summary", "impact", "importance",
                 ],
                 "additionalProperties": False,
             },
@@ -381,7 +378,7 @@ class ThemeSummarizer:
             )
             response = self.runner.invoke(
                 name=f"facts-{index // self.config.batch_size:03d}",
-                schema=FACT_SCHEMA,
+                schema=_fact_schema(batch),
                 instructions=_fact_prompt(),
                 input_payload={
                     "activity_window": {
@@ -391,7 +388,7 @@ class ThemeSummarizer:
                     "groups": batch,
                 },
             )
-            items = list(response.get("items") or [])
+            items = _attach_fact_metadata(list(response.get("items") or []), batch)
             _validate_facts(items, batch)
             for fact in items:
                 group_id = fact["group_id"]
@@ -589,10 +586,12 @@ or combining groups. Use a concrete technical theme (model, tensor format,
 parallel mechanism, execution mechanism, checkpoint path, and so on). Describe
 only evidenced changes and impact; never invent measurements. Related dev/main
 PRs are already grouped. Maintenance may be retained with lower importance.
-pr_numbers must exactly match the input group. Focus on current-window activity:
-in_window_commit_subjects and the opened/committed/merged flags are the activity
-evidence. Titles, bodies, labels, and changed paths provide context and identity,
-but must not be used to restate prior-period work that has no current activity.
+Copy each group_id exactly. Report sections and PR citations are trusted metadata
+that the application attaches after this call; do not emit them. Focus on
+current-window activity: in_window_commit_subjects and the
+opened/committed/merged flags are the activity evidence. Titles, bodies, labels,
+and changed paths provide context and identity, but must not be used to restate
+prior-period work that has no current activity.
 """.strip()
 
 
@@ -649,6 +648,30 @@ acronyms, model names, kernel names, APIs, class names, and identifiers whenever
 they have an established English form. Every term in the input preserve_terms
 array must appear verbatim in the corresponding translated prose where it occurs.
 """.strip()
+
+
+def _fact_schema(batch: list[dict[str, Any]]) -> dict[str, Any]:
+    schema = copy.deepcopy(FACT_SCHEMA)
+    item_schema = schema["properties"]["items"]["items"]
+    item_schema["properties"]["group_id"]["enum"] = [
+        item["group_id"] for item in batch
+    ]
+    return schema
+
+
+def _attach_fact_metadata(
+    items: list[dict[str, Any]], batch: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    expected = {item["group_id"]: item for item in batch}
+    enriched: list[dict[str, Any]] = []
+    for item in items:
+        fact = dict(item)
+        payload = expected.get(fact.get("group_id"))
+        if payload is not None:
+            fact["section"] = payload["section"]
+            fact["pr_numbers"] = [int(pr["number"]) for pr in payload["prs"]]
+        enriched.append(fact)
+    return enriched
 
 
 def _validate_facts(items: list[dict[str, Any]], batch: list[dict[str, Any]]) -> None:

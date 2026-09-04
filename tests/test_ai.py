@@ -6,6 +6,7 @@ from megatron_activity_report.ai import (
     SummaryError,
     ThemeSummarizer,
     _fact_cache_hash,
+    _fact_schema,
     _minimum_theme_count,
     _validate_aggregate,
 )
@@ -54,7 +55,6 @@ class FakeRunner:
                         "summary": "Added THD support.",
                         "impact": "Extends packed input support.",
                         "importance": self.importance,
-                        "pr_numbers": [pr["number"] for pr in group["prs"]],
                     }
                     for group in input_payload["groups"]
                 ]
@@ -161,8 +161,10 @@ def test_bilingual_structure_is_identical_and_facts_are_cached(tmp_path):
     with ActivityStore(tmp_path / "activity.duckdb") as store:
         summarizer = ThemeSummarizer(config(tmp_path), runner, store)
         window = ReportWindow.for_cutoff("2026-08-23", timezone_name="UTC")
-        _, english, chinese = summarizer.summarize([record()], [group()], window)
+        facts, english, chinese = summarizer.summarize([record()], [group()], window)
         _, english2, _ = summarizer.summarize([record()], [group()], window)
+    assert facts[0]["section"] == "delivered"
+    assert facts[0]["pr_numbers"] == [1]
     assert english["delivered_themes"][0]["group_ids"] == chinese["delivered_themes"][0]["group_ids"]
     assert english["delivered_themes"][0]["theme_id"] == chinese["delivered_themes"][0]["theme_id"]
     assert english2["delivered_themes"][0]["theme_id"]
@@ -172,6 +174,14 @@ def test_bilingual_structure_is_identical_and_facts_are_cached(tmp_path):
     assert runner.calls[0][2]["groups"][0]["prs"][0]["in_window_commit_subjects"] == [
         "current THD work"
     ]
+
+
+def test_fact_schema_constrains_ids_and_excludes_trusted_metadata():
+    schema = _fact_schema([{"group_id": "pr-1"}, {"group_id": "dev-main-2"}])
+    properties = schema["properties"]["items"]["items"]["properties"]
+    assert properties["group_id"]["enum"] == ["pr-1", "dev-main-2"]
+    assert "section" not in properties
+    assert "pr_numbers" not in properties
 
 
 def test_translation_cannot_change_pr_citations(tmp_path):

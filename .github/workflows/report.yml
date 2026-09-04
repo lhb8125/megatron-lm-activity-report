@@ -48,7 +48,7 @@ jobs:
           cache: pip
 
       - name: Restore rebuildable DuckDB ledger
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: runtime/activity.duckdb
           key: ${{ runner.os }}-activity-db-v1-${{ github.run_id }}
@@ -93,6 +93,13 @@ jobs:
             args+=(--publish)
           fi
           megatron-activity-report "${args[@]}"
+
+      - name: Save rebuildable DuckDB ledger
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: runtime/activity.duckdb
+          key: ${{ runner.os }}-activity-db-v1-${{ github.run_id }}
 
       - name: Upload audit database and previews
         if: always()

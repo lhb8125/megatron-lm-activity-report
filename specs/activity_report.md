@@ -23,9 +23,18 @@ the report window. The PR title, description, labels, and changed paths provide
 identity and context, but the model is instructed not to restate prior-period
 work unless current-window activity supports it.
 
+The model returns prose classifications keyed by a constrained `group_id` enum.
+Report section and PR-number citations are never model-authored: the application
+attaches both from the trusted input group after generation and validates the
+complete group set. This prevents a structurally valid model response from
+mis-citing another PR.
+
 Fact-cache keys include the month and extraction-policy version. Weekly updates
 within one month reuse unchanged facts, while a new month or policy revision
 cannot silently reuse facts generated from an older activity window.
+The rebuildable DuckDB ledger is saved to the Actions cache even when a later
+generation or validation step fails, so a retry does not need to fetch every PR
+snapshot again.
 
 ## Theme and citation structure
 
