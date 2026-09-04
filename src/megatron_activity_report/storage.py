@@ -195,6 +195,22 @@ class ActivityStore:
             [stage, status, error, finished, run_id],
         )
 
+    def has_completed_collection(self, source_repo: str, window_key: str) -> bool:
+        """Return whether an earlier run froze the exact reporting window.
+
+        A run advances beyond ``collect`` only after every candidate snapshot and
+        the derived ``window_prs`` rows have been stored.  This also recognizes
+        ledgers produced before an explicit collection marker existed.
+        """
+
+        row = self.connection.execute(
+            """SELECT 1 FROM report_runs
+               WHERE source_repo = ? AND window_key = ? AND stage != 'collect'
+               LIMIT 1""",
+            [source_repo, window_key],
+        ).fetchone()
+        return row is not None
+
     def cached_updated_at(self, source_repo: str, number: int) -> str | None:
         row = self.connection.execute(
             "SELECT updated_at FROM pull_requests WHERE source_repo = ? AND number = ?",

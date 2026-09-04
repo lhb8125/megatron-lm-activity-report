@@ -130,3 +130,6 @@ retains them as a 90-day audit artifact and restores the latest compatible cache
 if the cache is unavailable, the public GitHub data is collected again. A manual
 workflow run can optionally supply `seed_run_id` to restore the DuckDB ledger
 from that prior run's `activity-report-<run-id>` artifact.
+When that artifact already contains a successfully collected copy of the exact
+cutoff, the retry reuses the frozen window and does not spend API quota reacting
+to PR updates that happened after the cutoff.

@@ -92,3 +92,19 @@ def test_completed_snapshots_are_durable_when_a_later_fetch_fails(tmp_path, monk
             collector.collect(ReportWindow.for_cutoff("2026-08-23", timezone_name="UTC"))
         assert store.cached_updated_at("NVIDIA/Megatron-LM", 1) == updated_at
         assert store.cached_updated_at("NVIDIA/Megatron-LM", 2) is None
+
+
+def test_completed_collection_is_frozen_for_an_exact_window(tmp_path):
+    with ActivityStore(tmp_path / "activity.duckdb") as store:
+        run_id = store.start_run("NVIDIA/Megatron-LM", "2026-08-31-final", "hash")
+        assert not store.has_completed_collection(
+            "NVIDIA/Megatron-LM", "2026-08-31-final"
+        )
+
+        store.update_run(run_id, stage="classify")
+        assert store.has_completed_collection(
+            "NVIDIA/Megatron-LM", "2026-08-31-final"
+        )
+        assert not store.has_completed_collection(
+            "NVIDIA/Megatron-LM", "2026-08-24"
+        )

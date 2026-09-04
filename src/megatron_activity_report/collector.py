@@ -67,7 +67,7 @@ class ActivityCollector:
             if row is not None:
                 rows.append(row)
         self.store.replace_window_rows(self.source_repo, window.key, rows)
-        return _counts(rows)
+        return activity_counts(rows)
 
     def _discover_candidates(self, window: ReportWindow) -> dict[int, str]:
         start = window.start - timedelta(days=1)
@@ -216,7 +216,7 @@ def _commit_time(commit: dict[str, Any]) -> datetime | None:
     return parse_github_time(value)
 
 
-def _counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+def activity_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
     return {
         "active_prs": len(rows),
         "opened": sum(bool(row["opened"]) for row in rows),

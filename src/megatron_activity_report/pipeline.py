@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .ai import ThemeSummarizer, make_runner
-from .collector import ActivityCollector
+from .collector import ActivityCollector, activity_counts
 from .config import ReportConfig
 from .filters import classify_records
 from .github import GitHubClient
@@ -33,18 +33,32 @@ class ReportPipeline:
             )
             stage = "collect"
             try:
-                client = GitHubClient(timeout=self.config.request_timeout_seconds)
-                counts = ActivityCollector(
-                    client,
-                    store,
-                    source_repo=self.config.source_repo,
-                    workers=self.config.github_workers,
-                    progress=self.progress,
-                ).collect(window)
+                if store.has_completed_collection(self.config.source_repo, window.key):
+                    records = store.window_records(
+                        self.config.source_repo, window.key
+                    )
+                    counts = activity_counts(records)
+                    self.progress(
+                        f"reusing frozen collection for {window.key}: "
+                        f"{len(records)} active PRs"
+                    )
+                else:
+                    source_client = GitHubClient(
+                        timeout=self.config.request_timeout_seconds
+                    )
+                    counts = ActivityCollector(
+                        source_client,
+                        store,
+                        source_repo=self.config.source_repo,
+                        workers=self.config.github_workers,
+                        progress=self.progress,
+                    ).collect(window)
+                    records = store.window_records(
+                        self.config.source_repo, window.key
+                    )
 
                 stage = "classify"
                 store.update_run(run_id, stage=stage)
-                records = store.window_records(self.config.source_repo, window.key)
                 if not records:
                     raise RuntimeError(
                         f"no PR activity found for {self.config.source_repo} {window.key}"
@@ -141,8 +155,11 @@ class ReportPipeline:
                 if publish:
                     stage = "publish"
                     store.update_run(run_id, stage=stage)
+                    publication_client = GitHubClient(
+                        timeout=self.config.request_timeout_seconds
+                    )
                     publication = ReportPublisher(
-                        self.config, client, progress=self.progress
+                        self.config, publication_client, progress=self.progress
                     ).publish(
                         window,
                         english_title=english_title,
