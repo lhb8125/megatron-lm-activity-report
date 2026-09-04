@@ -34,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || secrets.OPENAI_BASE_URL || 'https://api.openai.com/v1' }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5' }}
       MEGATRON_GH_TOKEN: ${{ secrets.MEGATRON_GH_TOKEN }}
     steps:
@@ -61,6 +62,17 @@ jobs:
         run: |
           git config user.name "megatron-activity-report[bot]"
           git config user.email "megatron-activity-report[bot]@users.noreply.github.com"
+
+      - name: Validate report credentials
+        run: |
+          if [[ -z "${OPENAI_API_KEY}" ]]; then
+            echo "::error::Missing repository secret OPENAI_API_KEY"
+            exit 1
+          fi
+          if [[ -z "${MEGATRON_GH_TOKEN}" ]]; then
+            echo "::error::Missing repository secret MEGATRON_GH_TOKEN"
+            exit 1
+          fi
 
       - name: Run scheduled publication
         if: github.event_name == 'schedule'

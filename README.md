@@ -98,10 +98,21 @@ Add these repository secrets:
 - `MEGATRON_GH_TOKEN`: a least-privilege token that can read PR metadata and
   write Issues in `NVIDIA/Megatron-LM`.
 
+For NVIDIA Inference Hub, set these repository variables:
+
+- `OPENAI_BASE_URL=https://inference-api.nvidia.com/v1`
+- `OPENAI_MODEL=<an exact model ID returned by the key's model catalog>`
+
+`OPENAI_BASE_URL` may temporarily be stored as a secret and is supported for
+backward compatibility, but it is not sensitive and should normally be a
+repository variable. The Inference Hub API key itself must be stored under the
+exact secret name `OPENAI_API_KEY`.
+
 The workflow's repository `GITHUB_TOKEN` receives `contents: write` only so it
 can commit report and state files. Set `REPORT_AUTOMATION_ENABLED=false` while
 validating a manual dry-run. After a manual publication succeeds, change it to
-`true`. Optionally set `OPENAI_MODEL`; otherwise `gpt-5` is used.
+`true`. Optionally set `OPENAI_MODEL`; otherwise `gpt-5` is used. The workflow
+fails early with a clear error when either required secret is missing.
 
 PR text is treated as untrusted input. It is bounded, passed as data, and cannot
 alter the model role or publication target. Model output cannot introduce
