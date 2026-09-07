@@ -17,6 +17,15 @@
       "final": true,
       "issue_number": 6921,
       "issue_url": "https://github.com/NVIDIA/Megatron-LM/issues/6921"
+    },
+    "NVIDIA/Megatron-LM:2026-09": {
+      "chinese_sha256": "96513bc4e78988329680be3b60c6ecdbb2eac844c82da4666f2566fdce517f99",
+      "cutoff_date": "2026-09-06",
+      "destination_repo": "NVIDIA/Megatron-LM",
+      "english_sha256": "8d81782209a07937d86fdded2a6bf37c2870e82949c6b46e2fd54c20ee182773",
+      "final": false,
+      "issue_number": 7100,
+      "issue_url": "https://github.com/NVIDIA/Megatron-LM/issues/7100"
     }
   },
   "schema_version": 1
